@@ -74,14 +74,14 @@ class StackedFramesDataset(Dataset):
 
                 with open(json_path, 'r') as f:
                     data = json.load(f)
-                    normal_frames = []
+                    normal_frames = [] 
                     for label in data["labels"]:
                         if only_normal and label["accident_name"] != "normal": # Skips anamolous frames
                             continue
                         normal_frames.append(os.path.join(root_dir, label["image_path"]))
                     
                     # generate stacks of consecutive frames
-                    for i in range(0, len(normal_frames), _stride):
+                    for i in range(0, len(normal_frames)):
                         stack = normal_frames[i:i + stack_size]
                         # skip last incomplete stack
                         if len(stack) == stack_size:

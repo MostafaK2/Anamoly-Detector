@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, random_split
 import torch.optim as optim
+from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
 
 import copy
@@ -12,6 +12,11 @@ from tqdm import tqdm
 from ConvAE import Conv2DAutoEncoder
 from datasetclasses import StackedFramesDataset
 
+# -------------------------- Config Class ------------------------------
+
+
+
+
 
 # ---------------------------- Dataset Setup ----------------------------
 
@@ -19,12 +24,12 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 root = "/home/public/mkamal/datasets/deep_learning/projdata/uploaded_data"
 json_train_val_path = "/home/grad/masters/2025/mkamal/mkamal/dl_project/anamoly-detection/train_val.txt"
 
-# Normal Frame Transform 224x224
-transform_normal = transforms.Compose([
+# (1x204x204) Grayscale Normal Normalized on train_val.txt
+conv_grayscale_tranform204x204 = transforms.Compose([
     transforms.Resize((224, 224)),
+    transforms.Grayscale(num_output_channels=1),
     transforms.ToTensor(),
-    transforms.Normalize(mean=torch.tensor([0.4193, 0.4373, 0.4470]), 
-                         std=torch.tensor([0.2698, 0.2795, 0.2928]))
+    transforms.Normalize([0.43333843], [0.25460896])
 ])
 
 stack_size = 10
@@ -32,7 +37,7 @@ t_v_dataset = StackedFramesDataset(root,
                                stack_size=stack_size, 
                                overlap=0,
                                json_file_path=json_train_val_path,
-                               transform=transform_normal,  
+                               transform=conv_grayscale_tranform204x204,  
                                only_normal=True)
 
 loader = DataLoader(t_v_dataset, batch_size=4, shuffle=True, num_workers=24, pin_memory=True)
@@ -52,7 +57,8 @@ val_loader   = DataLoader(val_ds, batch_size=4, shuffle=False, num_workers=24, p
 
 # ---------------------------- MODEL SETUP ---------------------------- #
 EPOCHS = 5
-model = Conv2DAutoEncoder(3*stack_size).to(device)
+model = Conv2DAutoEncoder(1*stack_size).to(device) 
+# model = Conv2DAutoEncoder(3*stack_size).to(device) RGB Model 
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
 criterion = nn.MSELoss()
 
