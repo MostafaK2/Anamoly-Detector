@@ -1,0 +1,39 @@
+# ----------------------------
+# Python
+# ----------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+.env
+.venv
+env/
+venv/
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# Package builds
+build/
+dist/
+*.egg-info/
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Logs
+*.log
+
+# Cache
+.cache/
+.mypy_cache/
+.pytest_cache/
+pip-wheel-metadata/
+.pytest_cache/
+
+# ----------------------------
+# Machine Learning / Deep Learning
+# ----------------------------
