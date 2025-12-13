@@ -1,0 +1,76 @@
+============================================================
+HIGH RECONSTRUCTION ERROR STACKS - SUMMARY
+============================================================
+
+Total stacks analyzed: 4579
+Visualizations created: 10
+
+TOP HIGH ERROR STACKS:
+------------------------------------------------------------
+Rank 1:
+  Stack Index: 845
+  Reconstruction Error: 0.429275
+  Ground Truth Label: Anomalous (1)
+  Percentile: 100.00%
+
+Rank 2:
+  Stack Index: 3160
+  Reconstruction Error: 0.319895
+  Ground Truth Label: Anomalous (1)
+  Percentile: 99.98%
+
+Rank 3:
+  Stack Index: 564
+  Reconstruction Error: 0.306160
+  Ground Truth Label: Anomalous (1)
+  Percentile: 99.96%
+
+Rank 4:
+  Stack Index: 3896
+  Reconstruction Error: 0.288455
+  Ground Truth Label: Anomalous (1)
+  Percentile: 99.93%
+
+Rank 5:
+  Stack Index: 1156
+  Reconstruction Error: 0.287199
+  Ground Truth Label: Anomalous (1)
+  Percentile: 99.91%
+
+Rank 6:
+  Stack Index: 2241
+  Reconstruction Error: 0.266609
+  Ground Truth Label: Normal (0)
+  Percentile: 99.89%
+
+Rank 7:
+  Stack Index: 3
+  Reconstruction Error: 0.246584
+  Ground Truth Label: Normal (0)
+  Percentile: 99.87%
+
+Rank 8:
+  Stack Index: 1237
+  Reconstruction Error: 0.246395
+  Ground Truth Label: Normal (0)
+  Percentile: 99.85%
+
+Rank 9:
+  Stack Index: 870
+  Reconstruction Error: 0.239023
+  Ground Truth Label: Anomalous (1)
+  Percentile: 99.83%
+
+Rank 10:
+  Stack Index: 4419
+  Reconstruction Error: 0.237009
+  Ground Truth Label: Anomalous (1)
+  Percentile: 99.80%
+
+LABEL DISTRIBUTION IN TOP HIGH ERRORS:
+------------------------------------------------------------
+Normal stacks: 3 (30.0%)
+Anomalous stacks: 7 (70.0%)
+
+
+============================================================

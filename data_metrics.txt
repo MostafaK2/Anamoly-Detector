@@ -1,0 +1,15 @@
+Training Files: 
+
+FINAL STATISTICS: Training
+  Total clips: 21109
+  Normal: 10702 (50.7%)
+  Anomaly: 10407 (49.3%)
+  Index range: 0 to 21112
+
+
+Loaded preprocessed dataset from: /home/public/mkamal/datasets/deep_learning/projdata/uploaded_data/preprocessed_clips/validation
+  Total clips: 2481
+  Normal: 1249 (50.3%)
+  Anomaly: 1232 (49.7%)
+
+

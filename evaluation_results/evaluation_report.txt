@@ -1,0 +1,52 @@
+============================================================
+VIDEO ANOMALY DETECTION - EVALUATION REPORT
+Conv2DAutoEncoder - Stack of 10 Frames
+============================================================
+
+MODEL CONFIGURATION
+------------------------------------------------------------
+Model Path: /home/public/mkamal/saved_models/convAE_best_model30epochs3over.pth
+Image Stack Size: 10
+Image Size: 224x224
+Grayscale Channels: 1
+Input Channels: 10
+
+DATASET STATISTICS
+------------------------------------------------------------
+Total stacks: 4579
+Normal stacks (0): 2635
+Anomalous stacks (1): 1944
+
+RECONSTRUCTION ERROR STATISTICS
+------------------------------------------------------------
+Overall Mean: 0.069031
+Overall Std: 0.038759
+Overall Min: 0.005973
+Overall Max: 0.429272
+
+Normal stacks (0):
+  Mean: 0.065209
+  Std: 0.035277
+  Min: 0.005973
+  Max: 0.266608
+
+Anomalous stacks (1):
+  Mean: 0.074212
+  Std: 0.042486
+  Min: 0.006483
+  Max: 0.429272
+
+REGULARITY SCORE STATISTICS
+------------------------------------------------------------
+Overall Mean: 0.936598
+Overall Std: 0.032382
+
+Normal stacks (0) - Mean: 0.939775, Std: 0.029986
+Anomalous stacks (1) - Mean: 0.932293, Std: 0.034912
+
+PERFORMANCE METRICS
+------------------------------------------------------------
+AUC-ROC: 0.5561
+STAUCC: 0.5561
+
+============================================================

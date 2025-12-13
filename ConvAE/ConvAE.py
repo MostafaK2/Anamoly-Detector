@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import pdb
 
 class Conv2DAutoEncoder(nn.Module):
 	def __init__(self, input_shape):
@@ -37,7 +36,7 @@ class Conv2DAutoEncoder(nn.Module):
 			nn.ReLU(inplace=True),
 			nn.ConvTranspose2d(256,256,2,stride=2, dilation=2),  
 			
-            nn.ConvTranspose2d(256,512,5,stride=1, padding=2),   # 48->48
+            nn.ConvTranspose2d(256,512,5,stride=1, padding=2),  
 			nn.BatchNorm2d(512),
 			nn.ReLU(inplace=True),
 			nn.ConvTranspose2d(512, input_shape, 11, stride=4, padding=2, output_padding=1)  
