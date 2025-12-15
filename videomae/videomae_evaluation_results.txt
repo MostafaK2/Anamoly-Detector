@@ -1,0 +1,17 @@
+VideoMAE Model Evaluation Results
+============================================================
+
+Overall Metrics:
+Accuracy:   0.7696
+Precision:  0.8094
+Recall:     0.6722
+F1-Score:   0.7345
+AUC-ROC:    0.8281
+
+Confusion Matrix:
+TN: 1262, FP: 210
+FN: 435, TP: 892
+
+Per-Class Metrics:
+Normal: Precision=0.7437, Recall=0.8573, F1=0.7965, Support=1472
+Anomaly: Precision=0.8094, Recall=0.6722, F1=0.7345, Support=1327

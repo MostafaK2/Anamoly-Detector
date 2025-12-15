@@ -1,18 +1,15 @@
 import os
 import json
 import copy
-import cv2
 import matplotlib.pyplot as plt
 from PIL import Image
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader, random_split
+from torch.utils.data import Dataset, DataLoader
 
 from torchvision import transforms
-from torchvision.io import read_image
 
 from tqdm import tqdm
 
@@ -148,6 +145,102 @@ class StackedFramesDataset(Dataset):
         return stacked_tensor
 
 
+class StackedFramesDatasetTest(Dataset):
+    """
+    Dataset that returns 10 consecutive normal frames stacked along channel dimension.
+    
+    """
+    def __init__(self, root_dir, file_list, json_file_path = None, stack_size=10, overlap=0, transform=None, only_normal=False):
+        
+        assert 0 <= overlap < stack_size, "Overlap must be smaller than stack size."
+
+        # Read JSON filenames from the text file
+        if (json_file_path):
+            assert os.path.exists(json_file_path), f"JSON list file not found: {json_file_path}"
+            json_files = read_json_files(json_file_path)
+            print("Imported files from .txt file")
+        else:
+            json_files = file_list
+
+        _sliding_skip = stack_size-overlap
+
+        self.root_dir = root_dir
+        self.transform = transform
+        self.only_normal = only_normal
+        self.stack_size = stack_size
+        self.stacks = []  # list of tuples: (video_dir, list of consecutive normal frame paths)
+        self.stack_labels = []
+
+        annotations_path = os.path.join(root_dir, "annotations")
+        for json_file in json_files:
+                json_path = os.path.join(annotations_path, json_file)
+                if not os.path.exists(json_path):
+                    print(json_path)
+                    print("JSON file doesnt exist")
+                    continue
+            
+                with open(json_path, 'r') as f:
+                    data = json.load(f)
+                    frames = []
+                    frame_indices = []
+
+                    anomaly_start = data.get("anomaly_start", None)
+                    anomaly_end = data.get("anomaly_end", None)
+
+                    for label in data["labels"]:
+                        if only_normal and label["accident_name"] != "normal": # Skips anamolous frames
+                            continue
+
+                        frame_idx = label["frame_id"]
+                        frames.append(os.path.join(root_dir, label["image_path"]))
+                        frame_indices.append(frame_idx)
+                    
+                    # generate stacks of consecutive frames
+                    # Generate stacks of consecutive frames
+                    for i in range(0, len(frames), _sliding_skip):
+                        stack = frames[i:i + stack_size]
+                        stack_frame_indices = frame_indices[i:i + stack_size]
+                        
+                        # Skip last incomplete stack
+                        if len(stack) != stack_size:
+                            continue
+                        
+                        # Determine if this stack contains anomalous frames
+                        is_anomalous = False
+                        
+                        if anomaly_start is not None and anomaly_end is not None:
+                            # Check if ANY frame in the stack falls within anomaly range
+                            for frame_idx in stack_frame_indices:
+                                if anomaly_start <= frame_idx <= anomaly_end:
+                                    is_anomalous = True
+                                    break
+                        
+                        # If only_normal is True, skip anomalous stacks
+                        if only_normal and is_anomalous:
+                            continue
+                        
+                        # Add stack and its label
+                        self.stacks.append(stack)
+                        self.stack_labels.append(1 if is_anomalous else 0)
+            
+        print(f"Generated {len(self.stacks)} stacks of 10 frame clips, where the label distribution is: Normal={sum(1 for l in self.stack_labels if l == 0)}, Anomalous={sum(1 for l in self.stack_labels if l == 1)}")
+
+    def __len__(self):
+        return len(self.stacks)
+
+    def __getitem__(self, idx):
+        stack_paths = self.stacks[idx]
+        frames = []
+        for img_path in stack_paths:
+            img = Image.open(img_path).convert("RGB")
+            if self.transform:
+                img = self.transform(img)
+            frames.append(img)
+        # stack along channel dimension
+        stacked_tensor = torch.cat(frames, dim=0)
+        return stacked_tensor, self.stack_labels[idx]
+
+
 # --------------------------------------- Helper Functionss -------------------------------------- #
 
 # one validation run
@@ -189,11 +282,14 @@ class Config:
     NUM_CHANNELS = CONVERT_GRAY
 
     # TRAINING SETUP
-    EPOCH = 30
+    EPOCH = 1
     LR = 2.4e-05     # Learning Rate 3e-06 -> 32,  
     DECAY = 3e-5   # Regularization Parameter
-    EARLY_STOPPING_PATIENCE = 15   # Two epoch patience
-    
+    EARLY_STOPPING_PATIENCE = 7   # 7 epoch patience
+
+    # Model Output Path (Modify these)
+    SAVE_PATH = "/home/public/mkamal/saved_models/" + f"convae_b{BATCH}_e{EPOCH}.pth"
+    PLOT_SAVE_PATH = "/home/grad/masters/2025/mkamal/mkamal/dl_project/anamoly-detection/ConvAE/" + f"convae_b{BATCH}_e{EPOCH}_train_valild_plot.png"
     
 
 def main():
@@ -201,6 +297,7 @@ def main():
 
     # device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device {device}")
     
     # Normalization
     transform = transforms.Compose([
@@ -211,9 +308,9 @@ def main():
     ])
 
     # ---------------------------- Dataset Setup ----------------------------
+    print("="*60 + "\n Setting up Dataset \n"+ "="*60)
     # Train validation Split 90-10
     train_file_list, validation_file_list = split_before_training(config.JSON_FILE_PATH, 0.1, config.SEED)
-
 
     # Create datasets
     train_ds = StackedFramesDataset(
@@ -234,12 +331,13 @@ def main():
         only_normal=True
     )
 
-    
+    print(f"Train Dataset initialized with: {len(train_ds):,} samples")
+    print(f"Validation Dataset initialized with: {len(train_ds):,} samples")
     # Create DataLoaders
     train_loader = DataLoader(train_ds, batch_size=config.BATCH, shuffle=True, num_workers=config.NUM_WORKERS, pin_memory=True)
     val_loader   = DataLoader(val_ds, batch_size=config.BATCH, shuffle=False, num_workers=config.NUM_WORKERS, pin_memory=True)
-
     # ---------------------------- MODEL SETUP ---------------------------- #
+    print("="*60 + "\n Setting up Model \n"+ "="*60)
     model = Conv2DAutoEncoder(config.NUM_CHANNELS*config.IMAGE_STACK).to(device) 
     optimizer = optim.Adam(model.parameters(), lr=config.LR, weight_decay=config.DECAY)
     criterion = nn.MSELoss()
@@ -248,13 +346,12 @@ def main():
         optimizer, mode='min', factor=0.5, patience=5
     )
 
-    print("Initialized Model with ", sum(p.numel() for p in model.parameters()))
-    
-    # --------------------------- LR RANGE TEST AE ------------------------#
-
-    # lr_range_test_autoencoder(model,train_loader, device, num_iter=250)
+    print("Model setup successful")
+    print(f"Total Model Parameters: {sum(p.numel() for p in model.parameters()):,}")
+    print(f"Trainable parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad):,}")
 
     # ---------------------------- TRAIN LOOP ---------------------------- #
+    print("="*60 + "\n Training Loop \n"+ "="*60)
 
     patience=config.EARLY_STOPPING_PATIENCE; best=float("inf"); waited=0; best_state=None
 
@@ -264,7 +361,7 @@ def main():
 
         model.train()
         train_loss = 0
-        for batch in tqdm(train_loader, desc="Train Loader"):
+        for batch in tqdm(train_loader, desc=f"Train Loader: Epoch {epoch + 1}"):
             inp = batch.to(device)
             optimizer.zero_grad()
             out = model(inp)
@@ -292,13 +389,13 @@ def main():
                 print("Early stopping.")
                 break
         scheduler.step(val_loss)
-
-    # ---------------------------- PLOTTING ---------------------------- #
-
-    save_path = "/home/public/mkamal/saved_models/convAE_best.pth"
+   
+    # ---------------------------- Saving Model ---------------------------- #
+    save_path = config.SAVE_PATH
     torch.save(best_state, save_path)
-    print("Model saved in path: /home/public/mkamal/saved_models/convAE_best_model30.pth")
+    print(f"Model saved in path: {save_path}")
 
+    # ---------------------------- Plotting val/acc over epoch ---------------------------- #
     plt.figure()
     plt.plot(tl_list, label="Train Loss")
     plt.plot(vl_list, label="Validation Loss")
@@ -306,7 +403,7 @@ def main():
     plt.xlabel("Epoch")
     plt.ylabel("Value")
     plt.title("Training Metrics")
-    plt.savefig("convAE_train_valid_loss_curve3.png")
+    plt.savefig(config.PLOT_SAVE_PATH)
 
 if __name__ == "__main__":
     main()

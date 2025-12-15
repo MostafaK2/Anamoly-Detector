@@ -1,75 +1,72 @@
 import torch
-import torch.nn as nn
+from torch.utils.data import DataLoader
+from torchvision import transforms
+
 import numpy as np
 import matplotlib.pyplot as plt
-from torch.utils.data import DataLoader
-from PIL import Image
 from tqdm import tqdm
 import os
-import json
-from torchvision import transforms
-import cv2
 
-from ConvAE.ConvAE import Conv2DAutoEncoder 
-from utils import read_json_files
-from ConvAE.ConvAEDatasetClasses import StackedFramesDatasetTest
+from ConvAE_pipeline import Conv2DAutoEncoder, StackedFramesDatasetTest, Config
 
-# ==================== CONFIGURATION ====================
+
+def read_json_files(json_file_path):
+    if (not os.path.exists(json_file_path)):
+        raise FileNotFoundError(f"No JSON file found at {json_file_path}")
+    with open(json_file_path, "r") as f:
+        json_files = [line.strip() for line in f.readlines()]
+    
+    return json_files
+
+
+
+# ----------------------------- CONFIGURATION -----------------------------
 MODEL_PATH = "/home/public/mkamal/saved_models/convAE_best_model30epochs3over.pth"
-TEST_TXT_PATH = "test.txt"
-ROOT_DIR = "/home/public/mkamal/datasets/deep_learning/projdata/uploaded_data"
-OUTPUT_DIR = "high_error_visualizations"
-
-# Image settings
-IMAGE_SIZE = 224
-NORM_MEAN = [0.4333332]
-NORM_STD = [0.2551518]
-CONVERT_GRAY = 1
-IMAGE_STACK = 10
-
+TEST_TXT_PATH = "/home/grad/masters/2025/mkamal/mkamal/dl_project/anamoly-detection/test.txt"  # File containing JSON filenames for test videos
+OUTPUT_DIR = "/home/grad/masters/2025/mkamal/mkamal/dl_project/anamoly-detection/ConvAE/visualizations"
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # Visualization settings
 NUM_VIDEOS_TO_VISUALIZE = 10  # Top 10 highest errors
 FRAMES_PER_VIDEO = 5  # Show 5 frames from each stack
 
-print("="*60)
-print("VISUALIZING HIGH RECONSTRUCTION ERROR VIDEOS")
-print("="*60 + "\n")
+config = Config()
 
-# ==================== LOAD MODEL ====================
+print("="*60 + "\n ConvAE - Visualization\n" + "="*60)
+
+# ----------------------------- Load Model -----------------------------
 print("Loading model...")
-model = Conv2DAutoEncoder(CONVERT_GRAY * IMAGE_STACK).to(DEVICE)
+model = Conv2DAutoEncoder(config.CONVERT_GRAY * config.IMAGE_STACK).to(DEVICE)
 state_dict = torch.load(MODEL_PATH, map_location=DEVICE)
 model.load_state_dict(state_dict)
 model.eval()
-print("✓ Model loaded\n")
+print("Model loaded\n")
 
-# ==================== IMAGE TRANSFORM ====================
+# ----------------------------- Img Transform -----------------------------
 transform = transforms.Compose([
-    transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
-    transforms.Grayscale(num_output_channels=CONVERT_GRAY),
+    transforms.Resize((config.IMAGE_SIZE, config.IMAGE_SIZE)),
+    transforms.Grayscale(num_output_channels=config.CONVERT_GRAY),
     transforms.ToTensor(),
-    transforms.Normalize(NORM_MEAN, NORM_STD)
+    transforms.Normalize(config.NORM_MEAN, config.NORM_STD)
 ])
 
 # For visualization (without normalization)
 viz_transform = transforms.Compose([
-    transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
-    transforms.Grayscale(num_output_channels=CONVERT_GRAY),
+    transforms.Resize((config.IMAGE_SIZE, config.IMAGE_SIZE)),
+    transforms.Grayscale(num_output_channels=config.CONVERT_GRAY),
     transforms.ToTensor()
 ])
 
-# ==================== CREATE DATASET ====================
+# ----------------------------- DB -----------------------------
 print("Creating test dataset...")
 json_list = read_json_files(TEST_TXT_PATH)
-test_db = StackedFramesDatasetTest(ROOT_DIR, json_list, transform=transform, only_normal=False)
+test_db = StackedFramesDatasetTest(config.ROOT, json_list, transform=transform, only_normal=False)
 
 # Create DataLoader
 test_loader = DataLoader(test_db, batch_size=1, shuffle=False, num_workers=4)
-print(f"✓ Dataset created with {len(test_db)} stacks\n")
+print(f"Testing Dataset created with {len(test_db)} stacks\n")
 
-# ==================== COMPUTE ERRORS FOR ALL STACKS ====================
+# ----------------------------- Errors -----------------------------
 print("Computing reconstruction errors for all stacks...")
 all_errors = []
 all_labels = []
@@ -90,9 +87,9 @@ with torch.no_grad():
 all_errors = np.array(all_errors)
 all_labels = np.array(all_labels)
 
-print(f"✓ Computed errors for {len(all_errors)} stacks\n")
+print(f"Computed errors for {len(all_errors)} stacks\n")
 
-# ==================== FIND TOP HIGH ERROR STACKS ====================
+# ----------------------------- High reconstruction Errors -----------------------------
 # Get indices of top N highest errors
 top_error_indices = np.argsort(all_errors)[-NUM_VIDEOS_TO_VISUALIZE:][::-1]
 
@@ -102,18 +99,17 @@ for i, idx in enumerate(top_error_indices):
     print(f"  {i+1}. Stack {idx}: Error={all_errors[idx]:.6f}, Label={label_str}")
 print()
 
-# ==================== CREATE OUTPUT DIRECTORY ====================
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# ==================== DENORMALIZATION FUNCTION ====================
+# ----------------------------- Denormalizaation Function -----------------------------
 def denormalize(tensor, mean, std):
     """Denormalize tensor for visualization"""
     for t, m, s in zip(tensor, mean, std):
         t.mul_(s).add_(m)
     return tensor
 
-# ==================== VISUALIZE EACH HIGH ERROR STACK ====================
-print("Generating visualizations...")
+# ----------------------------- Visualize high error -----------------------------
+print("Generating visualizations")
 
 for rank, idx in enumerate(top_error_indices):
     print(f"Visualizing stack {rank+1}/{NUM_VIDEOS_TO_VISUALIZE}...")
@@ -125,14 +121,14 @@ for rank, idx in enumerate(top_error_indices):
     label_str = "Anomalous" if label == 1 else "Normal"
     
     # Denormalize
-    stack_denorm = denormalize(stack.clone().squeeze(0), NORM_MEAN, NORM_STD)
-    reconstruct_denorm = denormalize(reconstruction.clone().squeeze(0), NORM_MEAN, NORM_STD)
+    stack_denorm = denormalize(stack.clone().squeeze(0), Config.NORM_MEAN,Config.NORM_STD)
+    reconstruct_denorm = denormalize(reconstruction.clone().squeeze(0), Config.NORM_MEAN, Config.NORM_STD)
     
     # Compute per-frame error map
     error_map = (stack_denorm - reconstruct_denorm) ** 2
     
     # Select frames to display (evenly spaced)
-    frame_indices = np.linspace(0, IMAGE_STACK-1, FRAMES_PER_VIDEO, dtype=int)
+    frame_indices = np.linspace(0, Config.IMAGE_STACK-1, FRAMES_PER_VIDEO, dtype=int)
     
     # Create figure
     fig, axes = plt.subplots(3, FRAMES_PER_VIDEO, figsize=(3*FRAMES_PER_VIDEO, 12))
@@ -173,41 +169,7 @@ for rank, idx in enumerate(top_error_indices):
     
     print(f"Saved: {save_path}")
 
-# ==================== CREATE ERROR DISTRIBUTION WITH HIGHLIGHTS ====================
-print("\nGenerating error distribution plot...")
-
-fig, ax = plt.subplots(figsize=(12, 6))
-
-# Plot histograms for normal and anomalous
-normal_errors = all_errors[all_labels == 0]
-anomalous_errors = all_errors[all_labels == 1]
-
-ax.hist(normal_errors, bins=50, alpha=0.6, label=f'Normal (n={len(normal_errors)})', color='green', edgecolor='black')
-ax.hist(anomalous_errors, bins=50, alpha=0.6, label=f'Anomalous (n={len(anomalous_errors)})', color='red', edgecolor='black')
-
-# Highlight the top error stacks
-for rank, idx in enumerate(top_error_indices):
-    color = 'red' if all_labels[idx] == 1 else 'green'
-    marker = 'x' if all_labels[idx] == 1 else 'o'
-    ax.axvline(all_errors[idx], color=color, linestyle='--', alpha=0.7, linewidth=2)
-    ax.plot(all_errors[idx], 0, marker=marker, markersize=10, color=color, 
-            label=f'Rank {rank+1}' if rank < 3 else '')
-
-ax.set_xlabel('Reconstruction Error', fontsize=12)
-ax.set_ylabel('Frequency', fontsize=12)
-ax.set_title('Reconstruction Error Distribution with Top High-Error Stacks Highlighted', 
-             fontsize=14, fontweight='bold')
-ax.legend(fontsize=9, loc='upper right')
-ax.grid(alpha=0.3)
-
-plt.tight_layout()
-dist_plot_path = os.path.join(OUTPUT_DIR, 'error_distribution_highlighted.png')
-plt.savefig(dist_plot_path, dpi=300, bbox_inches='tight')
-plt.close()
-
-print(f"✓ Saved: {dist_plot_path}")
-
-# ==================== CREATE SUMMARY STATISTICS ====================
+# ----------------------------- Create Summary -----------------------------
 print("\nGenerating summary statistics...")
 
 summary_path = os.path.join(OUTPUT_DIR, 'high_error_summary.txt')
@@ -251,7 +213,6 @@ print("VISUALIZATION COMPLETE!")
 print("="*60)
 print(f"Output directory: {OUTPUT_DIR}/")
 print(f"  - {NUM_VIDEOS_TO_VISUALIZE} visualization images")
-print(f"  - error_distribution_highlighted.png")
 print(f"  - high_error_summary.txt")
 print("\nFiles saved:")
 for rank in range(NUM_VIDEOS_TO_VISUALIZE):

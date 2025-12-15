@@ -27,7 +27,7 @@ Rank 3:
 
 Rank 4:
   Stack Index: 3896
-  Reconstruction Error: 0.288455
+  Reconstruction Error: 0.288456
   Ground Truth Label: Anomalous (1)
   Percentile: 99.93%
 
@@ -39,7 +39,7 @@ Rank 5:
 
 Rank 6:
   Stack Index: 2241
-  Reconstruction Error: 0.266609
+  Reconstruction Error: 0.266608
   Ground Truth Label: Normal (0)
   Percentile: 99.89%
 

@@ -10,19 +10,13 @@ from utils import split_before_training
 
 
 def preprocess_and_save_clips(root_dir, file_list, processor, sequence_size=16, overlap=0, output_dir="train", start_from=0):
-    """
-    Preprocess all clips and save as .pt files
-    
-    Args:
-        start_from: Resume from this clip index (default: 0)
-    """
     os.makedirs(output_dir, exist_ok=True)
     
     # First, create all sequences
     sequences = []
     annotations_path = os.path.join(root_dir, "annotations")
     
-    print("Building sequences from JSON files...")
+    print("Building sequences from JSON files")
     for file in tqdm(file_list, desc="Processing JSON files"):
         json_path = os.path.join(annotations_path, file)
         if not os.path.exists(json_path):
@@ -81,7 +75,7 @@ def preprocess_and_save_clips(root_dir, file_list, processor, sequence_size=16, 
     metadata = []
     metadata_path = os.path.join(output_dir, 'metadata.json')
     
-    print("\nScanning for existing preprocessed clips...")
+    print("\nScanning for existing preprocessed clips")
     for idx in tqdm(range(len(sequences))):
         clip_filename = f"clip_{idx:08d}.pt"
         clip_path = os.path.join(output_dir, clip_filename)
@@ -103,7 +97,6 @@ def preprocess_and_save_clips(root_dir, file_list, processor, sequence_size=16, 
     # Now preprocess remaining sequences
     failed_count = 0
     
-    print(f"\nPreprocessing remaining clips (starting from index {start_from})...")
     for idx in tqdm(range(start_from, len(sequences)), desc="Saving clips", initial=start_from, total=len(sequences)):
         sequence = sequences[idx]
         frame_paths = sequence['paths']
@@ -240,6 +233,7 @@ def main():
         "MCG-NJU/videomae-base-finetuned-kinetics"
     )
     
+    # Modify these
     SEED = 42
     ROOT = "/home/public/mkamal/datasets/deep_learning/projdata/uploaded_data"
     JSON_FILE_PATH = "/home/grad/masters/2025/mkamal/mkamal/dl_project/anamoly-detection/train_val.txt"
@@ -250,24 +244,17 @@ def main():
     print(f"Train files: {len(train_file_list)}")
     print(f"Val files: {len(val_file_list)}")
     
-    # Check disk space
-    import shutil
-    stat = shutil.disk_usage(ROOT)
-    print(f"\nDisk space: {stat.free / (1024**3):.2f} GB free")
-    
     # Preprocess TRAINING clips
-    print("\n" + "="*70)
-    print("PREPROCESSING TRAINING CLIPS")
-    print("="*70)
-    preprocess_and_save_clips(
-        root_dir=ROOT,
-        file_list=train_file_list,
-        processor=processor,
-        sequence_size=16,
-        overlap=0,
-        output_dir=ROOT + "/preprocessed_clips/train",
-        start_from=0  # Will auto-skip existing files
-    )
+   
+    # preprocess_and_save_clips(
+    #     root_dir=ROOT,
+    #     file_list=train_file_list,
+    #     processor=processor,
+    #     sequence_size=16,
+    #     overlap=0,
+    #     output_dir=ROOT + "/preprocessed_clips/train",
+    #     start_from=0  # Will auto-skip existing files
+    # )
     
     # # Preprocess VALIDATION clips
     # print("\n" + "="*70)

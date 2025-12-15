@@ -26,21 +26,15 @@ class VideoMAEAnomalyDetector(nn.Module):
         self, 
         pretrained_model: str = "MCG-NJU/videomae-base-finetuned-kinetics",
         num_classes: int = 1,  # Normal vs Anomaly
-        freeze_backbone: bool = True,
         dropout: float = 0.3,
         freeze_layers  = 10  # 2 out of 12
     ):
         super(VideoMAEAnomalyDetector, self).__init__()
         
-        # Load pretrained VideMAE
         self.videomae = VideoMAEModel.from_pretrained(pretrained_model)
-        
         self._freeze_layers(freeze_layers)
-        
-        # Get hidden size from the model config
         hidden_size = self.videomae.config.hidden_size
         
-        # Classification head for anomaly detection
         self.classifier = nn.Sequential(
             nn.LayerNorm(hidden_size),
             nn.Dropout(dropout),
@@ -63,14 +57,9 @@ class VideoMAEAnomalyDetector(nn.Module):
 
 
     def forward(self, pixel_values):
-        # Get video features from VideMAE
         outputs = self.videomae(pixel_values=pixel_values)
-        
-        # Use the [CLS] token representation
         sequence_output = outputs.last_hidden_state
-        cls_output = sequence_output[:, 0, :]  # [batch_size, hidden_size]
-        
-        # Classify
+        cls_output = sequence_output[:, 0, :] 
         logits = self.classifier(cls_output)
         
         return logits
@@ -83,10 +72,10 @@ class DoTAVideoMAEDataset(Dataset):
         root_dir,
         file_list,
         processor: VideoMAEImageProcessor = None,
-        sequence_size=16,  # Number of frames per sequence (like stack_size)
-        overlap=8,         # Overlap between sequences (like your overlap)
-        only_normal=True,  # Whether to use only normal frames
-        include_labels=True,  # Whether to include labels for supervised training
+        sequence_size=16, 
+        overlap=0,         
+        only_normal=True,  
+        include_labels=True, 
     ):
         assert 0 <= overlap < sequence_size, "Overlap must be smaller than sequence size."
         self.root_dir = root_dir
@@ -135,7 +124,6 @@ class DoTAVideoMAEDataset(Dataset):
         for i in range(0, len(frames_data), self._sliding_skip):
             sequence_frames = frames_data[i:i + self.sequence_size]
             
-            # Skip incomplete sequences
             if len(sequence_frames) < self.sequence_size:
                 continue
             
@@ -184,16 +172,7 @@ class DoTAVideoMAEDataset(Dataset):
 
 # Using Preprocessed tensors for fast access (FAST)
 class DoTAVideoMAEDatasetPreprocessed(Dataset):
-    """
-    Fast dataset that loads preprocessed .pt clips
-    """
-    def __init__(self, preprocessed_dir):
-        """
-        Args:
-            preprocessed_dir: Directory containing preprocessed clips and metadata.json
-                             Example: "./preprocessed_clips/train" or 
-                                     "/path/to/preprocessed_clips/validation"
-        """
+    def __init__(self, preprocessed_dir):  
         self.preprocessed_dir = preprocessed_dir
         
         # Load metadata
@@ -290,8 +269,6 @@ def valid_epoch(model, device, loader, criterion):
     return avg_loss, accuracy, precision, recall, f1, auc
 
 
-
-
 class Config:
     SEED = 42
     
@@ -308,17 +285,22 @@ class Config:
     SLIDE_OVERLAP = 0
 
     # TRAINING SETUP
-    EPOCH = 15
-    LR =6.20e-04   # Learning Rate prev: 1e-4 
-    DECAY = 3e-5   # Regularization Parameter
+    EPOCH = 6
+    LR = 6.20e-04  # Learning Rate prev: 1e-4  , 6.20e-04
+    DECAY = 1e-2   # Regularization Parameter
     EARLY_STOPPING_PATIENCE = 2   # 3 epoch patience
 
     # Model Setup
     PRETRAINED_MODEL = "MCG-NJU/videomae-base-finetuned-kinetics" 
     NUM_CLASSES = 1
-    FREEZE_BACKBONE = False
-    FREEZE_LAYERS = 10  # 10 of 12
+    FREEZE_LAYERS = 9  # prev: 10 of 12
     FREEZE_LAYERS = min(FREEZE_LAYERS, 12) # can maximally freeze 12 layers
+    DROPOUT = 0.5
+
+    # Model Output Path (Modify these)
+    SAVE_PATH = "/home/public/mkamal/saved_models/" + f"videomae_b{BATCH}_e{EPOCH}.pth"
+    PLOT_SAVE_PATH = "/home/grad/masters/2025/mkamal/mkamal/dl_project/anamoly-detection/ConvAE/" + f"videomae_b{BATCH}_e{EPOCH}_train_valild_plot.png"
+    
 
 
 
@@ -329,10 +311,10 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     print("Using device: ", device)
-    
 
     # ------------------------------------------ DATA SETUP ------------------------------------------ # 
-    # Use VideoMAEimage processor
+    print("="*60 + "\n Setting up Dataset \n"+ "="*60)
+
     processor = VideoMAEImageProcessor.from_pretrained(
         "MCG-NJU/videomae-base-finetuned-kinetics"
     )
@@ -354,11 +336,12 @@ def main():
 
 
     # ------------------------------------------ MODEL SETUP ------------------------------------------ #
+    print("="*60 + "\n Setting up Model \n"+ "="*60)
     model  = VideoMAEAnomalyDetector(
         pretrained_model=config.PRETRAINED_MODEL, 
         num_classes=config.NUM_CLASSES, 
-        freeze_backbone=config.FREEZE_BACKBONE,
-        freeze_layers=config.FREEZE_LAYERS).to(device)
+        freeze_layers=config.FREEZE_LAYERS,
+        dropout=config.DROPOUT).to(device)
     
     optimizer = optim.Adam(model.parameters(), lr=config.LR, weight_decay=config.DECAY)
     criterion = nn.BCEWithLogitsLoss()
@@ -370,14 +353,13 @@ def main():
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-    print("="*80 + "MODEL SETUP" + "="*80)
+    
     print(f"Total parameters: {total_params:,}")
     print(f"Trainable parameters: {trainable_params:,}")
     print(f"Criterion Used: {criterion.__class__.__name__}")
     print(f"Optimizer Used: {optimizer}")
-    print("="*80 + "MODEL SETUP" + "="*80)
-    # ----------------------------  TRAIN LOOP -------------------- # 
-    print("\n\n" + "="*80 + "STARTING TRAINING" + "="*80)
+    # ------------------------------------------  TRAIN LOOP ------------------------------------------ # 
+    print( "="*60 + "\n Starting Training \n" + "="*60)
     patience=config.EARLY_STOPPING_PATIENCE; best=float("inf"); waited=0; best_state=None
 
     tl_list=[]; vl_list=[]; vl_acc = []
@@ -404,8 +386,13 @@ def main():
         scheduler.step(val_loss)        
         print(f"Epoch {epoch+1}/{config.EPOCH} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.4f} | Val AUC: {val_auc:.4f}")
 
+    
+
    
-    save_path = "/home/public/mkamal/saved_models/videomaebest.pth"
+    # ------------------------------------------  TRAIN LOOP ------------------------------------------ # 
+    print("="*60 + "\n Saving & Plotting \n"+ "="*60)
+
+    save_path = config.SAVE_PATH
     torch.save(best_state, save_path)
     print(f"Model saved in path: {save_path}")
 
@@ -417,7 +404,9 @@ def main():
     plt.ylabel("Value")
     plt.title("Training Metrics: videomae + classifier")
     plt.grid(True, alpha=0.3)
-    plt.savefig("videomae_val_tl_train.png")
+    plt.savefig(config.PLOT_SAVE_PATH)
+    plt.close()  # Close first figure
+
 
     # Validation accuracy plot
     plt.figure()
@@ -431,7 +420,6 @@ def main():
     plt.close()
 
 
-# if __name__ == "__main__":
-
-#     # main() 
+if __name__ == "__main__":
+    main() 
     

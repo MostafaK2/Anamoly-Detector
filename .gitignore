@@ -35,7 +35,7 @@ pip-wheel-metadata/
 .pytest_cache/
 
 *.pth
-
+*.npz
 # ----------------------------
 # Machine Learning / Deep Learning
 # ----------------------------
