@@ -70,7 +70,7 @@ cd ConvAE
 python ConvAE_pipeline.py
 ```
 
-**Configuration options** (edit in `trainConvAE.py`):
+**Configuration options** (edit in `Config` class):
 - `BATCH`: Batch size (default: 32)
 - `EPOCH`: Number of epochs (default: 30)
 - `LR`: Learning rate (default: 1e-4)
@@ -106,7 +106,7 @@ python visualizeConvAE.py
 python testVideoMAEAnamoly.py
 python _videomae_visualize_results.py
 ```
-Note: These codes will use configurations from ConvAE_pipeline.py code
+Note: These codes will use configurations from ConvAE_pipeline.py and videomae_anamoly_pipeline.py code
 
 Outputs:
 - AUC-ROC score
