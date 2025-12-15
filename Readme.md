@@ -80,7 +80,7 @@ python ConvAE_pipeline.py
 ### 2. Training VideoMAE Classifier (Supervised)
 ```bash
 cd videomae
-python trainVideoMAEAnamoly.py
+python videomae_anamoly_pipeline.py
 ```
 
 **Configuration options** (edit in `Config` class):
