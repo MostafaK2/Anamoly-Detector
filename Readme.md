@@ -4,8 +4,6 @@ Anomaly Detection in Egocentric Traffic Videos using Deep Learning
 ![Videomae Plot](videomae/temporal_plots/temporal_window_1_with_frames.png)
 <hr style="border: 2px solid #000000;">
 
-![Videomae Plot](ConvAE/visualizations/high_error_rank1_stack845_Anomalous.png)
-
 ## Project Overview
 This project explores two aproaches in detecting anamolies in ego-centric traffic videos
 1. **Unsupervised Approach**: Convolutional Autoencoder (ConvAE) - reconstruction-based anomaly detection
