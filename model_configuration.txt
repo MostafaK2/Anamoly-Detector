@@ -1,0 +1,28 @@
+Convulation Autoencoder Configuration
+    Image Transformation Values:
+    IMAGE_SIZE = 224        
+    NORM_MEAN = [0.4333332]
+    NORM_STD = [0.2551518]
+    IMAGE_STACK = 10
+    CONVERT_GRAY = 1
+
+    Model Input Channel: 10
+    model = Conv2DAutoEncoder(10)
+
+
+VideoMAE + Classifier Configurations
+    CLIP_SIZE = 16
+    PRETRAINED_MODEL = "MCG-NJU/videomae-base-finetuned-kinetics" 
+    NUM_CLASSES = 1
+    FREEZE_LAYERS = 9  # prev: 10 of 12
+    DROPOUT = 0.5
+
+    Preprocessor Used: Converts to 224 x 224 z-score normalized tensors
+    processor = VideoMAEImageProcessor.from_pretrained(
+        "MCG-NJU/videomae-base-finetuned-kinetics"
+    )
+
+    predictions: sigmoid with a 0.5 threshold
+
+
+
